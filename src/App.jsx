@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 function App() {
   const [images, setImages] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [responses, setResponses] = useState({});
+  const [responses, setResponses] = useState([]);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -16,24 +16,37 @@ function App() {
   }, []);
 
   const handleResponse = (answer) => {
-    const currentImage = images[currentIdx].name;
-    setResponses((prev) => ({ ...prev, [currentImage]: answer }));
+  const currentImage = images[currentIdx].name;
+  setResponses((prev) => [
+    ...prev,
+    {
+      "File Name": currentImage,
+      "User Answer": answer,
+    },
+  ]);
 
-    if (currentIdx + 1 < images.length) {
-      setCurrentIdx(currentIdx + 1);
-    } else {
-      setDone(true);
-      downloadResponses({ ...responses, [currentImage]: answer });
+  if (currentIdx + 1 < images.length) {
+    setCurrentIdx(currentIdx + 1);
+  } else {
+    setDone(true);
+  }
+};
+
+  useEffect(() => {
+    if (done) {
+      // Send JSON to backend API automatically when done
+      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/save-responses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(responses),
+      })
+        .then((res) => {
+          if (res.ok) alert("Responses saved to GitHub!");
+          else alert("Failed to save responses.");
+        })
+        .catch(() => alert("Network error saving responses."));
     }
-  };
-
-  const downloadResponses = (data) => {
-    const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-    const link = document.createElement("a");
-    link.href = jsonStr;
-    link.download = "responses.json";
-    link.click();
-  };
+  }, [done]);
 
   if (!images.length) return <div>Loading images...</div>;
   if (done) return <div style={{ margin: "40px" }}>Done! Responses saved.</div>;
@@ -41,13 +54,23 @@ function App() {
   return (
     <div style={{ margin: "70px" }}>
       <h1>Is this a vessel?</h1>
-      <div style={{ width: "400px", height: "400px", marginBottom: "40px", display: "flex", justifyContent: "center", alignItems: "center", border: "none" }}>
-  <img
-    src={images[currentIdx].src}
-    alt={images[currentIdx].name}
-    style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-  />
-</div>
+      <div
+        style={{
+          width: "400px",
+          height: "400px",
+          marginBottom: "40px",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          border: "none",
+        }}
+      >
+        <img
+          src={images[currentIdx].src}
+          alt={images[currentIdx].name}
+          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+        />
+      </div>
       <div>
         <button
           onClick={() => handleResponse("Yes")}
